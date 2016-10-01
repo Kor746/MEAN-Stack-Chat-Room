@@ -1,0 +1,21 @@
+{
+  "name": "chatsystem",
+  "version": "1.0.0",
+  "description": "\"chatroom prototype\"",
+  "main": "chat.js",
+  "dependencies": {
+    "express": "^4.13.4",
+    "mongoose": "^4.4.20",
+    "nodemon": "^1.9.2",
+    "socket.io": "^1.4.6"
+  },
+  "devDependencies": {},
+  "scripts": {
+    "start": "node chat.js"
+  },
+  "engines": {
+    "node": "4.4.4"
+  },
+  "author": "Daniel Lee",
+  "license": "ISC"
+}

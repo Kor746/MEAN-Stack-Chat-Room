@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en"> 
+<head>
+	<meta charset="UTF-8">
+	<title> Dan's Node Chat Room </title>
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="http://code.jquery.com/jquery-2.2.4.min.js"></script>
+	<style>
+		body {
+			font-family: Arial, sans-serif;
+			background: #000;
+		}
+		* {
+			padding: 0;
+			margin: 0;
+			-webkit-box-sizing: border-box;
+			-moz-box-sizing: border-box;
+			box-sizing: border-box;
+			
+
+		}
+		ul {
+			list-style-type: none;
+			position: absolute;
+			padding: 20px;
+			color: #00CC00;
+			overflow-y: auto;
+			display: block;
+			max-height: 70%;
+			width: 100%;
+			
+		}
+
+
+		#controls {
+			
+			border-top: 2px #333 solid;
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			display:block;
+			width:100%;
+			
+
+		}
+		#contentWrapper #message {
+			word-wrap: break-word;
+		}
+		#controls #msg{
+			
+			width: 80%;
+			padding: 20px;
+			float: left;
+			display: block;
+			font-size: 2em;
+
+		}
+		#controls #submit {
+			display: block;
+			height: 80px;
+			width: 20%;
+			
+			padding: 2px;
+			font-size: 18px;
+
+		}
+		#controls #submit:hover {
+			background: #00CC00;
+		}
+		#controls #channel {
+			display:block;
+			width: 100%;
+			font-size: 24pt;
+		}
+		#contentWrapper {
+			display: none;
+		}
+		#registration {
+			
+			border: 1px solid white;
+			border-radius: 25px;
+			padding: 30px;
+			position: absolute;
+			left: 40%;
+			top: 40%;
+		}
+		#registration input#username {
+			padding: 5px;
+			width: 200px;
+			height: 30px;
+			font-size: 1em;
+		}
+		#registration #usersubmit {
+			padding: 5px;
+			width: 80px;
+			height:30px;
+
+		}
+		#registration #usersubmit:hover {
+			background: red;
+			font-weight: bold;
+			border: none;
+		}
+		#registration #userError {
+			padding-top: 10px;
+			color: red;
+			font-weight: bold;
+		}
+
+		.who {
+			opacity: 0.7;
+			color: red;
+		}
+		#typing {
+			font-size: 1.2em;
+			padding-left:10px;
+			border: 1px solid white;
+			height:30px;
+			background: white;
+		}
+		
+	</style>
+</head>
+	
+<body>
+	<script type="text/javascript">
+		var socket = io();	
+		var typing = false;
+		var timeout = undefined;
+		
+
+		function timeoutFunction() {
+				typing = false;
+				socket.emit('typing', false);
+			}
+
+		$(function($) {
+			$("#userform").submit(function(e) {
+				e.preventDefault();
+				socket.emit('new user', $("#username").val(), function(data) {
+					if(data) {
+						
+						var msg = $("#username").val();
+						if(msg == '') return false;
+						$('#contentWrapper').show();
+						$('#registration').hide();
+
+					} else {
+						$("#userError").html("Username already taken!");
+					}
+
+				
+				return false;
+				})
+			});
+			$("#mainform").submit(function(e) {
+				e.preventDefault();
+				var message = $("#msg").val();
+				if(message == '') return false;
+				socket.emit('send message',message);
+				$('#msg').val('').focus();
+
+				return false;
+
+			});
+			$("#channel").change(function(e){
+				e.preventDefault();
+				socket.emit('change channel', $("#channel").val());
+			});
+			
+			$("#msg").keypress(function(e) {
+				//on key press except for enter
+				if(e.which !== 13) {
+					if(typing === false)
+					{
+					typing = true;
+					socket.emit('typing', true);
+					}
+			    } else {
+			    	
+			    	clearTimeout(timeout);
+			    	timeout = setTimeout(timeoutFunction, 0);
+			    	
+			    	
+			    }
+			});
+			
+		});
+
+
+		socket.on('message',function(msg,id) {
+			
+			$("#message").append($('<li>').text(Math.floor(Date.now() / 1000) + '__ ' + id + " : "  + msg));
+			$("#message").animate({ scrollTop: $("#message").prop('scrollHeight') },0);
+		});
+		
+		socket.on('change channel', function(channel) {
+			$('#message').html('').append($('<li>').text('System : Welcome to Channel ' + channel + '!'));
+			$("#message").animate({ scrollTop: $("#message").prop('scrollHeight') },0);
+
+		});
+
+		socket.on('welcome',function(data) {
+			$("#message").append($('<li>').html("Welcome to Dan's Room " + data + "!<br/>\<\( \'\_\'\<\)<br/>\( \>\'\_\'\)\><br/>\<\( \'\_\'\<\)<br/>\( \>\'\_\'\)\>"));
+			$("#message").animate({ scrollTop: $("#message").prop('scrollHeight') },0);
+		});
+
+		socket.on('online',function(cnt) {
+			if(cnt === 1)
+			{
+				$("#message").append($('<li>').html("<span class='who'>" + cnt + " user is online! </span>"));
+				$("#message").animate({ scrollTop: $("#message").prop('scrollHeight') },0);
+			}
+			else {
+				$("#message").append($('<li>').html("<span class='who'>" + cnt + " users are online! </span>"));
+				$("#message").animate({ scrollTop: $("#message").prop('scrollHeight') },0);
+			}
+		});
+
+		socket.on('user list', function(list) {
+			$("#message").append($('<li>').html("<span class='who'> User List: </span>"));
+			for(var i = 0; i < list.length; i++)  {
+				
+				$("#message").append($('<li>').html("<span class='who'>" + list[i] + " </span>"));
+			}
+			$("#message").animate({ scrollTop: $("#message").prop('scrollHeight') },0);
+		});
+
+		socket.on('istyping',function(data, id) {
+			if(data){
+				$("#typing").html("<span class='who'>" + id + " is typing... </span>");
+				timeout = setTimeout(timeoutFunction,5000);
+			} else {
+				$("#typing").html('');
+
+				
+			}
+			
+		});
+
+	
+
+	
+
+		
+	</script>
+	<div id="registration">
+		<form id="userform" action="">
+			<input id="username" type="text" name="username" placeholder="Enter username">
+			<input id="usersubmit" type="submit" name="submit" value="Submit">
+		</form>
+		<p id="userError"></p>
+
+	</div>
+	<div id="contentWrapper">
+		<ul id="message">
+
+		</ul>
+
+		<div id="controls">
+			<p id="typing"></p>
+			<form id="mainform" action="">
+				<select name ="channel" id="channel">
+					<option value="Dans The Man">Dan's Room</option>
+					<option value="Under Construction">Chill Out</option>
+				</select>
+				<input type="text" id="msg" placeholder="Enter your message...">
+				<input type="submit" id="submit" value="Enter">
+			</form>
+		</div>
+	</div>
+
+</body>
+
+</html>
